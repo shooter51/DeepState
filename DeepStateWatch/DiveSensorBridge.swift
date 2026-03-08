@@ -1,0 +1,60 @@
+import Foundation
+import DiveCore
+import Combine
+
+@Observable
+final class DiveSensorBridge: DiveSensorDelegate {
+
+    var depth: Double = 0
+    var temperature: Double = 22.0
+    var isSubmerged: Bool = false
+
+    var onSubmerged: (() -> Void)?
+    var onSurfaced: (() -> Void)?
+
+    private let sensor: DiveSensorProtocol
+
+    init() {
+        // TODO: When real CMWaterSubmersionManager integration is ready,
+        // conditionally use it here instead of MockDiveSensor.
+        #if SIMULATE_DIVE
+        let mock = MockDiveSensor()
+        self.sensor = mock
+        #else
+        let mock = MockDiveSensor()
+        self.sensor = mock
+        #endif
+
+        sensor.delegate = self
+    }
+
+    func startMonitoring() {
+        sensor.startMonitoring()
+    }
+
+    func stopMonitoring() {
+        sensor.stopMonitoring()
+    }
+
+    // MARK: - DiveSensorDelegate
+
+    func didUpdateDepth(_ depth: Double, temperature: Double?) {
+        self.depth = depth
+        if let temperature {
+            self.temperature = temperature
+        }
+    }
+
+    func didChangeSubmersionState(_ submerged: Bool) {
+        isSubmerged = submerged
+        if submerged {
+            onSubmerged?()
+        } else {
+            onSurfaced?()
+        }
+    }
+
+    func didEncounterError(_ error: Error) {
+        // TODO: Surface error to UI
+    }
+}

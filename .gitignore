@@ -1,0 +1,29 @@
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+DiveCore/.build/
+.swiftpm/
+
+# Build artifacts
+build/
+DiveCore/build/
+
+# Generated (recreate with xcodegen)
+DeepState.xcodeproj/
+
+# macOS
+.DS_Store
+
+# IDE
+*.swp
+*~
+.vscode/
+.idea/

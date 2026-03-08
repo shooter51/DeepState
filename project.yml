@@ -1,0 +1,136 @@
+name: DeepState
+options:
+  bundleIdPrefix: com.divestreams
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+packages:
+  DiveCore:
+    path: DiveCore
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  DeepStateApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: DeepStateApp
+        excludes:
+          - "Preview Content"
+    resources:
+      - path: DeepStateApp/Preview Content
+    dependencies:
+      - package: DiveCore
+    info:
+      path: DeepStateApp/Info.plist
+      properties:
+        CFBundleName: DeepState
+        CFBundleDisplayName: DeepState
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSHealthShareUsageDescription: "DeepState reads dive and workout data to display your dive history."
+        NSHealthUpdateUsageDescription: "DeepState saves dive sessions as workouts to your health data."
+    entitlements:
+      path: DeepStateApp/DeepStateApp.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "DeepState reads dive and workout data to display your dive history."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "DeepState saves dive sessions as workouts to your health data."
+        PRODUCT_BUNDLE_IDENTIFIER: com.divestreams.DeepState
+        PRODUCT_NAME: DeepState
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG SIMULATE_DIVE"
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+
+  DeepStateWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: DeepStateWatch
+        excludes:
+          - "Preview Content"
+    resources:
+      - path: DeepStateWatch/Preview Content
+    dependencies:
+      - package: DiveCore
+    info:
+      path: DeepStateWatch/Info.plist
+      properties:
+        CFBundleName: DeepState Watch
+        CFBundleDisplayName: DeepState
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.divestreams.DeepState
+        NSHealthShareUsageDescription: "DeepState reads dive and workout data to track your dives."
+        NSHealthUpdateUsageDescription: "DeepState saves dive sessions as workouts."
+        NSMotionUsageDescription: "DeepState uses motion sensors to detect water submersion and measure dive depth."
+        UIBackgroundModes:
+          - workout-processing
+    entitlements:
+      path: DeepStateWatch/DeepStateWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.divestreams.DeepState
+        PRODUCT_BUNDLE_IDENTIFIER: com.divestreams.DeepState.watchkitapp
+        PRODUCT_NAME: DeepState Watch
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "DeepState reads dive and workout data to track your dives."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "DeepState saves dive sessions as workouts."
+        INFOPLIST_KEY_NSMotionUsageDescription: "DeepState uses motion sensors to detect water submersion and measure dive depth."
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG SIMULATE_DIVE"
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+
+schemes:
+  DeepState:
+    build:
+      targets:
+        DeepStateApp: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: DiveCore/DiveCoreTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+
+  DeepState Watch:
+    build:
+      targets:
+        DeepStateWatch: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: DiveCore/DiveCoreTests
+    profile:
+      config: Release
