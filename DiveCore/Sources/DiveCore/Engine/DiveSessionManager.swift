@@ -111,7 +111,10 @@ public class DiveSessionManager {
         sensorDataAge = 0
         isSensorDataStale = false
         safetyStopManager.reset()
-        engine.resetToSurface()
+        // Only reset tissues for first dive; preserve residual loading for repetitive dives
+        if previousPhase != .surfaceInterval {
+            engine.resetToSurface()
+        }
 
         if previousPhase != .descending {
             logEvent(.phaseTransition, detail: "surface -> descending")
@@ -138,6 +141,7 @@ public class DiveSessionManager {
 
     public func updateDepth(_ depth: Double) {
         let now = Date()
+        let depth = max(0, depth)
         let interval: TimeInterval
         if let last = lastUpdateTime {
             interval = now.timeIntervalSince(last)
@@ -173,8 +177,8 @@ public class DiveSessionManager {
         depthLimitStatus = DepthLimits.evaluate(depth: depth, depthAlarm: depthAlarm)
 
         if depthLimitStatus == .depthLimitReached {
-            // NDL terminated - sensor accuracy not guaranteed beyond rated depth
-            ndl = 0
+            // Preserve actual NDL — the UI layer shows a full-screen DEPTH LIMIT
+            // overlay, so zeroing NDL is unnecessary and removes useful info
             if previousDepthLimitStatus != .depthLimitReached {
                 logEvent(.depthLimitReached, detail: "Depth \(String(format: "%.1f", depth))m >= \(String(format: "%.1f", DepthLimits.criticalDepth))m")
             }

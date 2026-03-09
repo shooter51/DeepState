@@ -6,6 +6,8 @@ public struct GasMix: Codable, Sendable, Equatable {
     public let heFraction: Double
 
     public init(o2Fraction: Double, n2Fraction: Double, heFraction: Double) {
+        precondition(abs(o2Fraction + n2Fraction + heFraction - 1.0) < 0.01,
+                     "Gas fractions must sum to 1.0 (got \(o2Fraction + n2Fraction + heFraction))")
         self.o2Fraction = o2Fraction
         self.n2Fraction = n2Fraction
         self.heFraction = heFraction

@@ -2,19 +2,29 @@ import Foundation
 
 public struct GasCalculator {
 
+    /// Standard surface pressure in bar (sea level)
+    public static let surfacePressure: Double = 1.013
+
     // MARK: - Maximum Operating Depth
 
     public static func mod(gasMix: GasMix, ppO2Max: Double = 1.4) -> Double {
-        (ppO2Max / gasMix.o2Fraction - 1.0) * 10.0
+        (ppO2Max / gasMix.o2Fraction - surfacePressure) * 10.0
     }
 
     // MARK: - Partial Pressure of O2
 
     public static func ppO2(depth: Double, gasMix: GasMix) -> Double {
-        gasMix.o2Fraction * (1.0 + depth / 10.0)
+        gasMix.o2Fraction * (surfacePressure + depth / 10.0)
     }
 
     // MARK: - CNS Toxicity
+    //
+    // CNS per-minute rates derived from NOAA Diving Manual single-exposure limits
+    // with conservative interpolation for intermediate ppO2 ranges.
+    // Source: NOAA Diving Program, NOAA Technical Memorandum; Shearwater CNS
+    // Oxygen Clock implementation (shearwater.com/blogs/community).
+    // Values at ppO2 > 1.1 are more conservative than NOAA baseline to provide
+    // additional safety margin for recreational dive computer use.
 
     public static func cnsPerMinute(ppO2: Double) -> Double {
         switch ppO2 {

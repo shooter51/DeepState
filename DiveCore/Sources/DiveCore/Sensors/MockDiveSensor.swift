@@ -52,7 +52,7 @@ public class MockDiveSensor: DiveSensorProtocol {
         }
     }
 
-    private func interpolatedDepth(at time: TimeInterval) -> Double {
+    func interpolatedDepth(at time: TimeInterval) -> Double {
         if time <= profilePoints.first!.time {
             return profilePoints.first!.depth
         }
@@ -73,7 +73,7 @@ public class MockDiveSensor: DiveSensorProtocol {
         return 0.0
     }
 
-    private func simulatedTemperature(at depth: Double) -> Double {
+    func simulatedTemperature(at depth: Double) -> Double {
         // 28°C at surface, declining to 22°C at 18m (linear with depth)
         let surfaceTemp = 28.0
         let tempDropPerMeter = 6.0 / 18.0
