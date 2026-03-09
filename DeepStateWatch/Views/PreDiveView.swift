@@ -24,6 +24,9 @@ struct PreDiveView: View {
     @State private var customGFLow: Int = 40
     @State private var customGFHigh: Int = 85
     @State private var maxDepthTarget: Double = 30
+    @State private var versionStatus: VersionCheckService.Status = .unknown
+
+    private let versionService = VersionCheckService()
 
     var onStartDive: (GasMix, Double, Double) -> Void
 
@@ -90,6 +93,24 @@ struct PreDiveView: View {
                         .font(.caption)
                 }
 
+                // Version gate warning
+                if case .updateRequired(let notice) = versionStatus {
+                    VStack(spacing: 4) {
+                        Label("UPDATE REQUIRED", systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.red)
+                        if let notice {
+                            Text(notice)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.red)
+                        }
+                        Text("Dive mode blocked until update")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 // Start Button
                 Button(action: startDive) {
                     Text("START DIVE")
@@ -97,13 +118,20 @@ struct PreDiveView: View {
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(.green, in: RoundedRectangle(cornerRadius: 12))
+                        .background(isDiveBlocked ? .gray : .green, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .disabled(isDiveBlocked)
                 .padding(.top, 8)
             }
             .padding(.horizontal, 8)
         }
+        .task { versionStatus = await versionService.check() }
+    }
+
+    private var isDiveBlocked: Bool {
+        if case .updateRequired = versionStatus { return true }
+        return false
     }
 
     private var selectedGasMix: GasMix {

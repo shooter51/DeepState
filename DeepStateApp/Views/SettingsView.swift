@@ -10,6 +10,10 @@ struct SettingsView: View {
         allSettings.first
     }
 
+    // Version check
+    @State private var versionStatus: VersionCheckService.Status = .unknown
+    private let versionService = VersionCheckService()
+
     // Local state mirroring model for responsive UI
     @State private var unitSystem: String = "metric"
     @State private var gasSelection: GasPreset = .air
@@ -43,6 +47,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .onAppear(perform: loadOrCreateSettings)
+            .task { versionStatus = await versionService.check() }
             .onChange(of: unitSystem) { _, _ in saveSettings() }
             .onChange(of: gasSelection) { _, _ in saveSettings() }
             .onChange(of: customO2) { _, _ in saveSettings() }
@@ -151,16 +156,41 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Minimum safe version check
             HStack {
                 Text("App Status")
                 Spacer()
-                Text("Up to Date")
-                    .foregroundStyle(.green)
+                switch versionStatus {
+                case .unknown:
+                    Text("Checking...")
+                        .foregroundStyle(.secondary)
+                case .upToDate:
+                    Text("Up to Date")
+                        .foregroundStyle(.green)
+                case .updateRequired:
+                    Text("Update Required")
+                        .foregroundStyle(.red)
+                        .fontWeight(.bold)
+                case .checkFailed:
+                    Text("Check Failed")
+                        .foregroundStyle(.orange)
+                }
             }
-            // TODO: Check against remote minimum safe version endpoint
-            // If current version < minimum safe version, display warning
-            // and block dive mode via DiveVersionGate
+
+            if case .updateRequired(let notice) = versionStatus {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Safety Update Available", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .fontWeight(.bold)
+                    if let notice {
+                        Text(notice)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    Text("Update DeepState before your next dive. Dive mode is blocked until you update.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             Text("This is a recreational dive computer tool. Not certified for life-safety use.")
                 .font(.caption)
