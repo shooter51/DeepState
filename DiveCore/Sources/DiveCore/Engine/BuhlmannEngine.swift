@@ -65,7 +65,7 @@ public class BuhlmannEngine {
         self.gfHigh = gfHigh
         self.surfacePressure = 1.013
 
-        let surfaceN2PP = 0.7808 * (surfacePressure - BuhlmannEngine.waterVaporPressure)
+        let surfaceN2PP = GasMix.air.n2Fraction * (surfacePressure - BuhlmannEngine.waterVaporPressure)
         self.tissueStates = Array(repeating: TissueState(pN2: surfaceN2PP, pHe: 0.0), count: 16)
     }
 
@@ -263,7 +263,7 @@ public class BuhlmannEngine {
     // MARK: - Reset
 
     public func resetToSurface() {
-        let surfaceN2PP = 0.7808 * (surfacePressure - BuhlmannEngine.waterVaporPressure)
+        let surfaceN2PP = GasMix.air.n2Fraction * (surfacePressure - BuhlmannEngine.waterVaporPressure)
         for i in 0..<16 {
             tissueStates[i] = TissueState(pN2: surfaceN2PP, pHe: 0.0)
         }
@@ -288,7 +288,7 @@ public class BuhlmannEngine {
 
             // M-value at surface
             let mValue = a + surfacePressure / b
-            let surfaceN2PP = 0.7808 * (surfacePressure - BuhlmannEngine.waterVaporPressure)
+            let surfaceN2PP = GasMix.air.n2Fraction * (surfacePressure - BuhlmannEngine.waterVaporPressure)
 
             // Percentage: how far between surface saturation and M-value
             let loading = (pInert - surfaceN2PP) / (mValue - surfaceN2PP) * 100.0

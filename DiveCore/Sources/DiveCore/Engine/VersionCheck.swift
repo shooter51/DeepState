@@ -49,15 +49,28 @@ public actor VersionCheckService {
 
     private let endpoint: URL
     private let currentVersion: String
+    private let dataFetcher: @Sendable (URL) async throws -> (Data, URLResponse)
 
     public init(endpoint: URL = defaultEndpoint, currentVersion: String = "1.0.0") {
         self.endpoint = endpoint
         self.currentVersion = currentVersion
+        self.dataFetcher = { url in try await URLSession.shared.data(from: url) }
+    }
+
+    /// Test-only initializer allowing injection of a custom data fetcher
+    public init(
+        endpoint: URL = defaultEndpoint,
+        currentVersion: String = "1.0.0",
+        dataFetcher: @escaping @Sendable (URL) async throws -> (Data, URLResponse)
+    ) {
+        self.endpoint = endpoint
+        self.currentVersion = currentVersion
+        self.dataFetcher = dataFetcher
     }
 
     public func check() async -> Status {
         do {
-            let (data, response) = try await URLSession.shared.data(from: endpoint)
+            let (data, response) = try await dataFetcher(endpoint)
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
                 return .checkFailed

@@ -32,7 +32,7 @@ final class DepthLimitsTests: XCTestCase {
         let manager = DiveSessionManager()
         manager.startDive()
         manager.updateDepth(40.0)
-        XCTAssertEqual(manager.ndl, 0, "NDL should be 0 at depth limit (40m)")
+        XCTAssertGreaterThan(manager.ndl, 0, "NDL should be preserved at depth limit (40m); UI shows depth warning overlay instead")
         XCTAssertEqual(manager.depthLimitStatus, .depthLimitReached,
                        "Depth limit status should be .depthLimitReached at 40m")
     }
