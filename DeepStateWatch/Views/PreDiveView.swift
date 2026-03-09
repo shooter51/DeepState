@@ -34,6 +34,10 @@ struct PreDiveView: View {
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.blue)
 
+                Text("Operating depth: 40m / 130ft max")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(.gray)
+
                 // Gas Selection
                 VStack(alignment: .leading, spacing: 4) {
                     Text("GAS MIX")

@@ -1,6 +1,7 @@
 import Foundation
 import DiveCore
 import Observation
+import WatchKit
 
 @Observable
 final class DiveViewModel {
@@ -30,6 +31,12 @@ final class DiveViewModel {
     private(set) var tissueLoadingPercent: [Double] = []
     private(set) var gasDescription: String = "Air"
     private(set) var gfDescription: String = "40/85"
+
+    // Safety properties
+    private(set) var depthLimitStatus: DepthLimits.DepthLimitStatus = .safe
+    private(set) var isSensorDataStale: Bool = false
+    private(set) var sensorDataAge: TimeInterval = 0
+    private(set) var sessionIntegrityScore: Double = 100.0
 
     // MARK: - Underlying Manager
 
@@ -101,6 +108,16 @@ final class DiveViewModel {
         tissueLoadingPercent = manager.tissueLoadingPercent
         gasDescription = manager.gasDescription
         gfDescription = manager.gfDescription
+
+        depthLimitStatus = manager.depthLimitStatus
+        isSensorDataStale = manager.isSensorDataStale
+        sensorDataAge = manager.sensorDataAge
+        sessionIntegrityScore = manager.sessionIntegrityScore
+    }
+
+    func checkSensorStaleness() {
+        manager.checkSensorStaleness()
+        syncState()
     }
 
     // MARK: - Passthrough for save

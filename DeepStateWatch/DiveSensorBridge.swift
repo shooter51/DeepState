@@ -8,6 +8,7 @@ final class DiveSensorBridge: DiveSensorDelegate {
     var depth: Double = 0
     var temperature: Double = 22.0
     var isSubmerged: Bool = false
+    var isSensorAvailable: Bool = true
 
     var onSubmerged: (() -> Void)?
     var onSurfaced: (() -> Void)?
@@ -40,6 +41,7 @@ final class DiveSensorBridge: DiveSensorDelegate {
 
     func didUpdateDepth(_ depth: Double, temperature: Double?) {
         self.depth = depth
+        self.isSensorAvailable = true
         if let temperature {
             self.temperature = temperature
         }
@@ -55,6 +57,6 @@ final class DiveSensorBridge: DiveSensorDelegate {
     }
 
     func didEncounterError(_ error: Error) {
-        // TODO: Surface error to UI
+        isSensorAvailable = false
     }
 }

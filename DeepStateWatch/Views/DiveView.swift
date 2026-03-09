@@ -21,6 +21,8 @@ struct DiveView: View {
     @State private var lastHapticNDL: Int?
     @State private var lastHapticAscent: AscentRateMonitor.AscentRateStatus?
     @State private var safetyStopHapticFired = false
+    @State private var depthWarningHapticTimer: Timer?
+    @State private var lastDepthLimitStatus: DepthLimits.DepthLimitStatus = .safe
 
     var body: some View {
         GeometryReader { geo in
@@ -46,6 +48,14 @@ struct DiveView: View {
                 if viewModel.safetyStopIsActive {
                     safetyStopOverlay(size: geo.size)
                 }
+
+                // Depth limit overlays
+                depthLimitOverlay
+
+                // Sensor stale overlay
+                if viewModel.isSensorDataStale {
+                    sensorStaleOverlay
+                }
             }
         }
         .onChange(of: viewModel.ndl) { _, newNDL in
@@ -58,6 +68,14 @@ struct DiveView: View {
             if isStop && !safetyStopHapticFired {
                 WKInterfaceDevice.current().play(.click)
                 safetyStopHapticFired = true
+            }
+        }
+        .onChange(of: viewModel.depthLimitStatus) { _, newStatus in
+            fireDepthLimitHaptics(status: newStatus)
+        }
+        .onChange(of: viewModel.isSensorDataStale) { _, isStale in
+            if isStale {
+                WKInterfaceDevice.current().play(.failure)
             }
         }
     }
@@ -204,6 +222,108 @@ struct DiveView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Depth Limit Overlay
+
+    @ViewBuilder
+    private var depthLimitOverlay: some View {
+        switch viewModel.depthLimitStatus {
+        case .safe:
+            EmptyView()
+
+        case .approachingLimit:
+            VStack {
+                Text("DEPTH ALARM: \(String(format: "%.1f", viewModel.currentDepth))m")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.yellow, in: RoundedRectangle(cornerRadius: 6))
+                Spacer()
+            }
+            .padding(.top, 2)
+
+        case .maxDepthWarning:
+            ZStack {
+                Color.red.ignoresSafeArea()
+
+                VStack(spacing: 8) {
+                    Text("MAX DEPTH")
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("ASCEND NOW")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(String(format: "%.1f m", viewModel.currentDepth))
+                        .font(.system(size: 36, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                }
+            }
+
+        case .depthLimitReached:
+            ZStack {
+                Color.red.ignoresSafeArea()
+
+                VStack(spacing: 8) {
+                    Text("DEPTH LIMIT REACHED")
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                    Text("ASCEND NOW")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(String(format: "%.1f m", viewModel.currentDepth))
+                        .font(.system(size: 36, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                    Text("NDL: ---")
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
+    }
+
+    // MARK: - Sensor Stale Overlay
+
+    private var sensorStaleOverlay: some View {
+        ZStack {
+            Color.orange.opacity(0.85).ignoresSafeArea()
+
+            VStack(spacing: 8) {
+                Text("SENSOR DATA STALE")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("Last: \(String(format: "%.1f", viewModel.currentDepth)) m")
+                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+                Text("NDL: ---")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+    }
+
+    // MARK: - Depth Limit Haptics
+
+    private func fireDepthLimitHaptics(status: DepthLimits.DepthLimitStatus) {
+        // Stop any existing continuous haptic timer
+        depthWarningHapticTimer?.invalidate()
+        depthWarningHapticTimer = nil
+
+        switch status {
+        case .safe:
+            break
+        case .approachingLimit:
+            WKInterfaceDevice.current().play(.notification)
+        case .maxDepthWarning, .depthLimitReached:
+            // Fire continuous haptic every second
+            WKInterfaceDevice.current().play(.stop)
+            depthWarningHapticTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                WKInterfaceDevice.current().play(.stop)
+            }
+        }
+        lastDepthLimitStatus = status
     }
 
     // MARK: - Haptics

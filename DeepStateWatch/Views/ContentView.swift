@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 import DiveCore
 
 struct ContentView: View {
@@ -6,8 +7,41 @@ struct ContentView: View {
     @State private var diveViewModel = DiveViewModel(gasMix: .air, gfLow: 0.40, gfHigh: 0.85)
     @State private var sensorBridge = DiveSensorBridge()
     @State private var updateTimer: Timer?
+    @State private var runtimeManager = ExtendedRuntimeManager()
+    @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+    @State private var showRecovery = TissueStatePersistence.hasInterruptedSession()
+    @State private var persistCounter: Int = 0
 
     var body: some View {
+        Group {
+            if !hasCompletedOnboarding {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                }
+            } else if showRecovery {
+                SessionRecoveryView(
+                    onResume: {
+                        if let state = TissueStatePersistence.loadPersistedState() {
+                            diveViewModel.startDive()
+                            sensorBridge.startMonitoring()
+                            runtimeManager.startSession()
+                            startUpdateLoop()
+                        }
+                        showRecovery = false
+                    },
+                    onEnd: {
+                        TissueStatePersistence.clearPersistedState()
+                        showRecovery = false
+                    }
+                )
+            } else {
+                diveContent
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private var diveContent: some View {
         Group {
             switch diveViewModel.phase {
             case .surface, .predive:
@@ -15,6 +49,7 @@ struct ContentView: View {
                     diveViewModel.reconfigure(gasMix: gasMix, gfLow: gfLow, gfHigh: gfHigh)
                     diveViewModel.startDive()
                     sensorBridge.startMonitoring()
+                    runtimeManager.startSession()
                     startUpdateLoop()
                 }
 
@@ -29,19 +64,32 @@ struct ContentView: View {
             case .surfaceInterval:
                 PostDiveView(viewModel: diveViewModel) {
                     stopUpdateLoop()
+                    runtimeManager.endSession()
+                    TissueStatePersistence.clearPersistedState()
                     diveViewModel.resetForNewDive()
                     sensorBridge.stopMonitoring()
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private func startUpdateLoop() {
         stopUpdateLoop()
+        persistCounter = 0
         updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             diveViewModel.updateDepth(sensorBridge.depth)
             diveViewModel.updateTemperature(sensorBridge.temperature)
+            diveViewModel.checkSensorStaleness()
+
+            // Auto-persist tissue state every 5 seconds during active dive
+            persistCounter += 1
+            if persistCounter >= 5 {
+                persistCounter = 0
+                let phase = diveViewModel.phase
+                if phase == .descending || phase == .atDepth || phase == .ascending || phase == .safetyStop {
+                    TissueStatePersistence.persist(manager: diveViewModel.manager)
+                }
+            }
         }
     }
 

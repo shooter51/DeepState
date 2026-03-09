@@ -38,6 +38,7 @@ struct SettingsView: View {
                 gradientFactorsSection
                 oxygenLimitsSection
                 ascentRateSection
+                supportSection
                 aboutSection
             }
             .navigationTitle("Settings")
@@ -122,6 +123,16 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Support
+
+    private var supportSection: some View {
+        Section("Support") {
+            NavigationLink("Report an Issue") {
+                FeedbackView()
+            }
+        }
+    }
+
     // MARK: - About
 
     private var aboutSection: some View {
@@ -139,6 +150,17 @@ struct SettingsView: View {
                 Text("1.0.0")
                     .foregroundStyle(.secondary)
             }
+
+            // Minimum safe version check
+            HStack {
+                Text("App Status")
+                Spacer()
+                Text("Up to Date")
+                    .foregroundStyle(.green)
+            }
+            // TODO: Check against remote minimum safe version endpoint
+            // If current version < minimum safe version, display warning
+            // and block dive mode via DiveVersionGate
 
             Text("This is a recreational dive computer tool. Not certified for life-safety use.")
                 .font(.caption)

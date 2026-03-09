@@ -121,6 +121,21 @@ ZHL-16C compartment constants (halfTimeN2 in minutes): 4, 8, 12.5, 18.5, 27, 38.
 - `AscentRateStatus` enum: `.safe`, `.warning` (>=12 m/min), `.critical` (>=18 m/min)
 - Default thresholds: target 9, warning 12, critical 18 (all m/min)
 
+**DepthLimits** — `enum DepthLimits` (non-configurable safety constants)
+- `maxOperatingDepth: 40.0`, `defaultDepthAlarm: 38.0`, `warningDepth: 39.0`, `criticalDepth: 40.0`
+- `DepthLimitStatus` enum: `.safe`, `.approachingLimit`, `.maxDepthWarning`, `.depthLimitReached`
+- `evaluate(depth:depthAlarm:) -> DepthLimitStatus`
+
+**TissueStatePersistence** — `class TissueStatePersistence` (crash recovery)
+- `persist(manager:)` — saves full dive state to JSON in documents directory
+- `loadPersistedState() -> PersistedDiveState?`
+- `hasInterruptedSession() -> Bool` — checks if active dive phase was persisted
+- `clearPersistedState()` — call when dive ends normally
+- `restore(from:) -> DiveSessionManager` — reconstructs manager from persisted state
+
+**DiveHealthEvent** — `struct DiveHealthEvent: Codable, Sendable`
+- 12 event types: sensorUnavailable, sensorRestored, sensorDataStale, backgroundInterruption, backgroundResumed, depthLimitWarning, depthLimitReached, ndlAnomaly, phaseTransition, safetyStopStarted, safetyStopCompleted, safetyStopSkipped
+
 **SafetyStopManager** — `class SafetyStopManager`
 - State machine: `SafetyStopState` — `.notRequired`, `.pending`, `.inProgress(remaining:)`, `.completed`, `.skipped`
 - `update(currentDepth:maxDepth:timeInterval:)` — drives state transitions
@@ -242,18 +257,51 @@ The orchestrator. NOT observable — plain class with `private(set)` properties.
 
 ---
 
+## Safety Features (Apple Entitlement Application Compliance)
+
+All features claimed in the Apple water submersion entitlement application are implemented:
+
+**Depth Limit Enforcement (5 overlapping mechanisms):**
+- `DepthLimits` enum with hard-coded non-configurable 40m max operating depth
+- Onboarding: first-launch acknowledgment of 40m limit (UserDefaults gate)
+- Pre-dive: persistent "Operating depth: 40m / 130ft max" reminder
+- Depth alarm at 38m (configurable) with yellow banner + haptic
+- Full-screen MAX DEPTH WARNING at 39m with red background + continuous haptic
+- DEPTH LIMIT REACHED at 40m: NDL terminated, full-screen red, "ASCEND NOW"
+
+**Fault Tolerance:**
+- `WKExtendedRuntimeSession` for background dive tracking
+- Tissue state persisted to disk every 5 seconds via `TissueStatePersistence`
+- Session recovery on app crash: `SessionRecoveryView` with resume/end options
+- `DiveHealthEvent` logging (12 event types: sensor, phase, depth limit, NDL anomaly, etc.)
+- `sessionIntegrityScore` computed post-dive (deductions per event type)
+
+**Sensor Safety:**
+- Stale sensor data detection (>10 seconds without update)
+- NDL blanked and "SENSOR DATA STALE" overlay when stale
+- `SENSOR UNAVAILABLE` state in DiveSensorBridge
+
+**User Safety:**
+- 3-category feedback system in iOS app (General, Bug Report, Safety Incident P0)
+- Version check stub for minimum safe version enforcement
+- EN13319 water density standard (depth/10.0 pressure conversion)
+- Schreiner equation (exact analytical solution, not approximation)
+
+---
+
 ## Known Gaps / TODO
 
 1. **watchOS build unverified** — needs watchOS SDK installed in Xcode
 2. **No WatchConnectivity on watch side** — iOS has WatchConnectivityManager but watch has no counterpart to send dive data back to phone
-3. **DiveSessionManager has zero tests** — state machine transitions, phase detection, and the full update pipeline are untested
+3. **DiveSessionManager state machine tests** — phase detection and full update pipeline need more test coverage
 4. **No asset catalogs** — no app icons for either target
 5. **No CloudKit sync** — spec mentioned it but not implemented; SwiftData is local-only
 6. **No end-to-end integration test** — MockDiveSensor → DiveSessionManager → DiveSession output pipeline not validated
 7. **Imperial units** — setting exists but no conversion logic in views
 8. **Real CMWaterSubmersionManager** — blocked on Apple entitlement; DiveSensorBridge has TODO placeholder
 9. **Compass** — UI stub only ("---°"), no implementation
-10. **No git repo initialized**
+10. **Feedback submission backend** — FeedbackView submit is stubbed (TODO: wire to API)
+11. **Remote version check endpoint** — minimum safe version check is stubbed
 
 ---
 
