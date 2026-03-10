@@ -75,8 +75,9 @@ struct DiveLogListView: View {
     // MARK: - Actions
 
     private func deleteDives(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(diveSessions[index])
+        let sessionsToDelete = offsets.map { diveSessions[$0] }
+        for session in sessionsToDelete {
+            modelContext.delete(session)
         }
     }
 

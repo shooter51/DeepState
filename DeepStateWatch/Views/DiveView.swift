@@ -74,6 +74,11 @@ struct DiveView: View {
             device.isBatteryMonitoringEnabled = true
             batteryLevel = device.batteryLevel
         }
+        .onChange(of: viewModel.elapsedTime) { _, newTime in
+            if Int(newTime) % 60 == 0 {
+                batteryLevel = WKInterfaceDevice.current().batteryLevel
+            }
+        }
         .onDisappear {
             depthWarningHapticTimer?.invalidate()
             depthWarningHapticTimer = nil

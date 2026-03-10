@@ -51,8 +51,18 @@ struct SettingsView: View {
             .onChange(of: unitSystem) { _, _ in saveSettings() }
             .onChange(of: gasSelection) { _, _ in saveSettings() }
             .onChange(of: customO2) { _, _ in saveSettings() }
-            .onChange(of: gfLow) { _, _ in saveSettings() }
-            .onChange(of: gfHigh) { _, _ in saveSettings() }
+            .onChange(of: gfLow) { _, newValue in
+                if gfHigh < newValue + 10 {
+                    gfHigh = min(newValue + 10, 95)
+                }
+                saveSettings()
+            }
+            .onChange(of: gfHigh) { _, newValue in
+                if gfLow > newValue - 10 {
+                    gfLow = max(newValue - 10, 10)
+                }
+                saveSettings()
+            }
             .onChange(of: ppO2Max) { _, _ in saveSettings() }
             .onChange(of: ascentRateWarning) { _, _ in saveSettings() }
             .onChange(of: ascentRateCritical) { _, _ in saveSettings() }

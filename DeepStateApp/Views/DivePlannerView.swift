@@ -1,7 +1,12 @@
 import SwiftUI
+import SwiftData
 import DiveCore
 
 struct DivePlannerView: View {
+    // MARK: - Settings
+
+    @Query private var settings: [DiveSettings]
+
     // MARK: - Input State
 
     @State private var targetDepth: Int = 18
@@ -10,6 +15,7 @@ struct DivePlannerView: View {
     @State private var gfLow: Double = 0.40
     @State private var gfHigh: Double = 0.85
     @State private var ppO2Max: Double = 1.4
+    @State private var hasLoadedSettings = false
 
     enum GasSelection: String, CaseIterable, Identifiable {
         case air = "Air"
@@ -60,7 +66,9 @@ struct DivePlannerView: View {
     }
 
     private var ndl: Int {
-        let engine = BuhlmannEngine(gfLow: gfLow, gfHigh: gfHigh)
+        let effectiveGfLow = settings.first?.gfLow ?? gfLow
+        let effectiveGfHigh = settings.first?.gfHigh ?? gfHigh
+        let engine = BuhlmannEngine(gfLow: effectiveGfLow, gfHigh: effectiveGfHigh)
         return engine.ndl(depth: depth, gasMix: gasMix)
     }
 
@@ -101,6 +109,15 @@ struct DivePlannerView: View {
                 simulatedProfileSection
             }
             .navigationTitle("Planner")
+            .onAppear {
+                guard !hasLoadedSettings else { return }
+                hasLoadedSettings = true
+                if let s = settings.first {
+                    gfLow = s.gfLow
+                    gfHigh = s.gfHigh
+                    ppO2Max = s.ppO2Max
+                }
+            }
         }
     }
 

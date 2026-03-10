@@ -41,16 +41,12 @@ struct FeedbackView: View {
                 submitSection
             }
             .navigationTitle("Report")
-            .alert("Feedback Submitted", isPresented: $showingSubmitConfirmation) {
+            .alert("Report Saved Locally", isPresented: $showingSubmitConfirmation) {
                 Button("OK") {
                     dismiss()
                 }
             } message: {
-                if selectedCategory == .safetyIncident {
-                    Text("Your safety report has been submitted. You will receive a response within 24 hours.")
-                } else {
-                    Text("Thank you for your feedback.")
-                }
+                Text("Feedback submission is not yet connected to a server. Your report has been saved locally but has NOT been sent. Please email safety@divestreams.com for urgent safety concerns.")
             }
         }
     }

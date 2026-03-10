@@ -23,7 +23,6 @@ struct PreDiveView: View {
     @State private var gfPreset: GFPreset = .defaultGF
     @State private var customGFLow: Int = 40
     @State private var customGFHigh: Int = 85
-    @State private var maxDepthTarget: Double = 30
     @State private var versionStatus: VersionCheckService.Status = .unknown
     @State private var versionCheckCompleted = false
 
@@ -92,16 +91,6 @@ struct PreDiveView: View {
                     if customGFLow > newHigh - 10 {
                         customGFLow = min(customGFLow, newHigh - 10)
                     }
-                }
-
-                // Max Depth Target
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("TARGET DEPTH")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    Stepper("\(Int(maxDepthTarget))m", value: $maxDepthTarget, in: 10...60, step: 5)
-                        .font(.caption)
                 }
 
                 // Version check unavailable warning
