@@ -64,8 +64,18 @@ struct SettingsView: View {
                 saveSettings()
             }
             .onChange(of: ppO2Max) { _, _ in saveSettings() }
-            .onChange(of: ascentRateWarning) { _, _ in saveSettings() }
-            .onChange(of: ascentRateCritical) { _, _ in saveSettings() }
+            .onChange(of: ascentRateWarning) { _, newValue in
+                if ascentRateCritical <= newValue {
+                    ascentRateCritical = min(newValue + 3, 30)
+                }
+                saveSettings()
+            }
+            .onChange(of: ascentRateCritical) { _, newValue in
+                if ascentRateWarning >= newValue {
+                    ascentRateWarning = max(newValue - 3, 6)
+                }
+                saveSettings()
+            }
         }
     }
 

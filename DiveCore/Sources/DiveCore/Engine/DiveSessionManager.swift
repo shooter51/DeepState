@@ -227,8 +227,11 @@ public class DiveSessionManager {
         // Periodic persistence
         samplesSincePersist += 1
         if samplesSincePersist >= 5 {
-            TissueStatePersistence.persist(manager: self)
             samplesSincePersist = 0
+            let activePhases: Set<DivePhase> = [.descending, .atDepth, .ascending, .safetyStop]
+            if activePhases.contains(phase) {
+                TissueStatePersistence.persist(manager: self)
+            }
         }
     }
 

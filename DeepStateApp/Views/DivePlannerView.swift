@@ -125,7 +125,7 @@ struct DivePlannerView: View {
 
     private var inputSection: some View {
         Section("Dive Parameters") {
-            Stepper("Target Depth: \(targetDepth)m", value: $targetDepth, in: 5...60, step: 1)
+            Stepper("Target Depth: \(targetDepth)m", value: $targetDepth, in: 5...40, step: 1)
 
             Picker("Gas Mix", selection: $gasSelection) {
                 ForEach(GasSelection.allCases) { gas in
@@ -140,6 +140,16 @@ struct DivePlannerView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Stepper("GF Low: \(Int(gfLow * 100))%", value: $gfLow, in: 0.10...0.95, step: 0.05)
                 Stepper("GF High: \(Int(gfHigh * 100))%", value: $gfHigh, in: 0.10...0.95, step: 0.05)
+            }
+        }
+        .onChange(of: gfLow) { _, newLow in
+            if gfHigh < newLow + 0.10 {
+                gfHigh = min(newLow + 0.10, 0.95)
+            }
+        }
+        .onChange(of: gfHigh) { _, newHigh in
+            if gfLow > newHigh - 0.10 {
+                gfLow = max(newHigh - 0.10, 0.10)
             }
         }
     }

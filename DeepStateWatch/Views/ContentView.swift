@@ -83,14 +83,19 @@ struct ContentView: View {
             diveViewModel.updateTemperature(sensorBridge.temperature)
             diveViewModel.checkSensorStaleness()
 
+            // Auto-stop when dive ends (e.g. surfacing for 5+ seconds)
+            if diveViewModel.phase == .surfaceInterval {
+                sensorBridge.stopMonitoring()
+                stopUpdateLoop()
+                runtimeManager.endSession()
+                return
+            }
+
             // Auto-persist tissue state every 5 seconds during active dive
             persistCounter += 1
             if persistCounter >= 5 {
                 persistCounter = 0
-                let phase = diveViewModel.phase
-                if phase == .descending || phase == .atDepth || phase == .ascending || phase == .safetyStop {
-                    TissueStatePersistence.persist(manager: diveViewModel.manager)
-                }
+                TissueStatePersistence.persist(manager: diveViewModel.manager)
             }
         }
     }
