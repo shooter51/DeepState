@@ -101,6 +101,8 @@ public class BuhlmannEngine {
         let inspiredN2 = (ambientPressure - BuhlmannEngine.waterVaporPressure) * gasMix.n2Fraction
         let inspiredHe = (ambientPressure - BuhlmannEngine.waterVaporPressure) * gasMix.heFraction
 
+        // 999 iterations of simple arithmetic (exp, multiply, compare) is fast (<1ms)
+        // and does not require a timeout guard.
         for minute in 0..<999 {
             // Check if any compartment exceeds M-value at current GF high
             for i in 0..<16 {

@@ -2,7 +2,7 @@ import Foundation
 
 public struct AscentRateMonitor {
 
-    public enum AscentRateStatus: Sendable {
+    public enum AscentRateStatus: Sendable, Equatable {
         case safe
         case warning
         case critical

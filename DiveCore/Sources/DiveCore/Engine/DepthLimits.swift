@@ -20,9 +20,10 @@ public enum DepthLimits {
     }
 
     public static func evaluate(depth: Double, depthAlarm: Double = defaultDepthAlarm) -> DepthLimitStatus {
+        let clampedAlarm = min(depthAlarm, criticalDepth)
         if depth >= criticalDepth { return .depthLimitReached }
         if depth >= warningDepth { return .maxDepthWarning }
-        if depth >= depthAlarm { return .approachingLimit }
+        if depth >= clampedAlarm { return .approachingLimit }
         return .safe
     }
 }

@@ -90,6 +90,12 @@ public class TissueStatePersistence {
     public static func restore(from state: PersistedDiveState) -> DiveSessionManager {
         let manager = DiveSessionManager(gasMix: state.gasMix, gfLow: state.gfLow, gfHigh: state.gfHigh)
 
+        // Validate tissue state count matches expected 16 compartments.
+        // If mismatched, return a fresh manager rather than restoring partial state.
+        guard state.tissueStates.count == 16 else {
+            return manager
+        }
+
         // Restore tissue states
         for (i, tissue) in state.tissueStates.enumerated() where i < 16 {
             manager.engine.tissueStates[i] = TissueState(pN2: tissue.pN2, pHe: tissue.pHe)

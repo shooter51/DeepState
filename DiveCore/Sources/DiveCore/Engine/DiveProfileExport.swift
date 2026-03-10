@@ -17,11 +17,15 @@ public struct DiveProfileExport: Codable, Sendable {
     public let exportVersion: String
     public let exportDate: Date
 
+    /// Current schema version for dive profile exports.
+    /// Increment when the export format changes (e.g., fields added/removed/renamed).
+    public static let currentSchemaVersion = "1.0.0"
+
     public init(config: DiveConfig, samples: [ProfileSample], summary: DiveSummary, exportDate: Date = Date()) {
         self.config = config
         self.samples = samples
         self.summary = summary
-        self.exportVersion = "1.0.0"
+        self.exportVersion = DiveProfileExport.currentSchemaVersion
         self.exportDate = exportDate
     }
 

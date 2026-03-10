@@ -25,6 +25,7 @@ struct PreDiveView: View {
     @State private var customGFHigh: Int = 85
     @State private var maxDepthTarget: Double = 30
     @State private var versionStatus: VersionCheckService.Status = .unknown
+    @State private var versionCheckCompleted = false
 
     private let versionService = VersionCheckService()
 
@@ -82,6 +83,16 @@ struct PreDiveView: View {
                             .font(.caption)
                     }
                 }
+                .onChange(of: customGFLow) { _, newLow in
+                    if customGFHigh < newLow + 10 {
+                        customGFHigh = max(customGFHigh, newLow + 10)
+                    }
+                }
+                .onChange(of: customGFHigh) { _, newHigh in
+                    if customGFLow > newHigh - 10 {
+                        customGFLow = min(customGFLow, newHigh - 10)
+                    }
+                }
 
                 // Max Depth Target
                 VStack(alignment: .leading, spacing: 4) {
@@ -91,6 +102,13 @@ struct PreDiveView: View {
 
                     Stepper("\(Int(maxDepthTarget))m", value: $maxDepthTarget, in: 10...60, step: 5)
                         .font(.caption)
+                }
+
+                // Version check unavailable warning
+                if versionCheckCompleted, case .checkFailed = versionStatus {
+                    Text("Version check unavailable")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.yellow)
                 }
 
                 // Version gate warning
@@ -126,7 +144,10 @@ struct PreDiveView: View {
             }
             .padding(.horizontal, 8)
         }
-        .task { versionStatus = await versionService.check() }
+        .task {
+            versionStatus = await versionService.check()
+            versionCheckCompleted = true
+        }
     }
 
     private var isDiveBlocked: Bool {

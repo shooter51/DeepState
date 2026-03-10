@@ -9,6 +9,7 @@ struct DivePlannerView: View {
     @State private var customO2: Int = 32
     @State private var gfLow: Double = 0.40
     @State private var gfHigh: Double = 0.85
+    @State private var ppO2Max: Double = 1.4
 
     enum GasSelection: String, CaseIterable, Identifiable {
         case air = "Air"
@@ -49,8 +50,7 @@ struct DivePlannerView: View {
     }
 
     private var mod: Double {
-        // MOD = (ppO2Max / fO2 - 1) * 10
-        (1.4 / gasMix.o2Fraction - 1.0) * 10.0
+        GasCalculator.mod(gasMix: gasMix, ppO2Max: ppO2Max)
     }
 
     private var ead: Double? {
@@ -69,33 +69,24 @@ struct DivePlannerView: View {
     }
 
     // Simulated profile calculations
-    private var descentRate: Double { 18.0 } // m/min
-    private var ascentRate: Double { 9.0 }   // m/min
+    private var simulatedProfile: (descent: Double, bottom: Double, ascent: Double, safetyStop: Double, finalAscent: Double, total: Double) {
+        // TODO: These rates should come from DiveSettings
+        let descentRateMPerMin = 18.0 // m/min
+        let ascentRateMPerMin = 9.0   // m/min
 
-    private var descentTime: Double {
-        depth / descentRate
-    }
-
-    private var bottomTime: Double {
-        Double(ndl)
-    }
-
-    private var ascentTime: Double {
+        let descentTime = depth / descentRateMPerMin
+        let bottomTime = Double(ndl)
         let ascentDepth = depth > 10 ? depth - 5.0 : depth
-        return ascentDepth / ascentRate
+        let ascentTime = ascentDepth / ascentRateMPerMin
+        let safetyStopTime = depth > 10 ? 3.0 : 0.0
+        let finalAscentTime = depth > 10 ? 5.0 / ascentRateMPerMin : 0.0
+        let totalDiveTime = descentTime + bottomTime + ascentTime + safetyStopTime + finalAscentTime
+
+        return (descentTime, bottomTime, ascentTime, safetyStopTime, finalAscentTime, totalDiveTime)
     }
 
-    private var safetyStopTime: Double {
-        depth > 10 ? 3.0 : 0.0
-    }
-
-    private var finalAscentTime: Double {
-        depth > 10 ? 5.0 / ascentRate : 0.0
-    }
-
-    private var totalDiveTime: Double {
-        descentTime + bottomTime + ascentTime + safetyStopTime + finalAscentTime
-    }
+    private var descentRate: Double { 18.0 }
+    private var ascentRate: Double { 9.0 }
 
     // MARK: - Body
 
@@ -201,14 +192,15 @@ struct DivePlannerView: View {
     // MARK: - Simulated Profile Section
 
     private var simulatedProfileSection: some View {
-        Section("Simulated Square Profile") {
-            profileRow(label: "Descent", value: String(format: "%.1f min", descentTime), detail: "at \(Int(descentRate))m/min")
-            profileRow(label: "Bottom Time", value: "\(Int(bottomTime)) min", detail: "at \(targetDepth)m")
-            profileRow(label: "Ascent", value: String(format: "%.1f min", ascentTime), detail: "at \(Int(ascentRate))m/min")
+        let profile = simulatedProfile
+        return Section("Simulated Square Profile") {
+            profileRow(label: "Descent", value: String(format: "%.1f min", profile.descent), detail: "at \(Int(descentRate))m/min")
+            profileRow(label: "Bottom Time", value: "\(Int(profile.bottom)) min", detail: "at \(targetDepth)m")
+            profileRow(label: "Ascent", value: String(format: "%.1f min", profile.ascent), detail: "at \(Int(ascentRate))m/min")
 
-            if safetyStopTime > 0 {
+            if profile.safetyStop > 0 {
                 profileRow(label: "Safety Stop", value: "3 min", detail: "at 5m")
-                profileRow(label: "Final Ascent", value: String(format: "%.1f min", finalAscentTime), detail: "5m to surface")
+                profileRow(label: "Final Ascent", value: String(format: "%.1f min", profile.finalAscent), detail: "5m to surface")
             }
 
             Divider()
@@ -217,7 +209,7 @@ struct DivePlannerView: View {
                 Text("Total Dive Time")
                     .fontWeight(.semibold)
                 Spacer()
-                Text(String(format: "%.0f min", totalDiveTime))
+                Text(String(format: "%.0f min", profile.total))
                     .fontWeight(.bold)
                     .foregroundStyle(.blue)
             }

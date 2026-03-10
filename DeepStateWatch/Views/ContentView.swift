@@ -22,8 +22,9 @@ struct ContentView: View {
                 SessionRecoveryView(
                     onResume: {
                         if let state = TissueStatePersistence.loadPersistedState() {
-                            diveViewModel.startDive()
+                            diveViewModel.resumeFromPersistedState(state)
                             sensorBridge.startMonitoring()
+                            runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
                             runtimeManager.startSession()
                             startUpdateLoop()
                         }
@@ -49,6 +50,7 @@ struct ContentView: View {
                     diveViewModel.reconfigure(gasMix: gasMix, gfLow: gfLow, gfHigh: gfHigh)
                     diveViewModel.startDive()
                     sensorBridge.startMonitoring()
+                    runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
                     runtimeManager.startSession()
                     startUpdateLoop()
                 }
@@ -63,11 +65,11 @@ struct ContentView: View {
 
             case .surfaceInterval:
                 PostDiveView(viewModel: diveViewModel) {
+                    sensorBridge.stopMonitoring()
                     stopUpdateLoop()
                     runtimeManager.endSession()
                     TissueStatePersistence.clearPersistedState()
                     diveViewModel.resetForNewDive()
-                    sensorBridge.stopMonitoring()
                 }
             }
         }

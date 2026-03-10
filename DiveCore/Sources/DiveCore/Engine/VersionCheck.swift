@@ -20,8 +20,11 @@ public struct VersionManifest: Codable, Sendable {
 public enum VersionComparator {
 
     public static func isVersion(_ current: String, olderThan minimum: String) -> Bool {
-        let currentParts = current.split(separator: ".").compactMap { Int($0) }
-        let minimumParts = minimum.split(separator: ".").compactMap { Int($0) }
+        // Strip pre-release suffixes (anything after "-") before parsing
+        let currentBase = current.split(separator: "-").first.map(String.init) ?? current
+        let minimumBase = minimum.split(separator: "-").first.map(String.init) ?? minimum
+        let currentParts = currentBase.split(separator: ".").compactMap { Int($0) }
+        let minimumParts = minimumBase.split(separator: ".").compactMap { Int($0) }
 
         let count = max(currentParts.count, minimumParts.count)
         for i in 0..<count {

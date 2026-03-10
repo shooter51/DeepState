@@ -2,17 +2,7 @@ import SwiftUI
 import WatchKit
 import DiveCore
 
-// Extend AscentRateStatus to be Equatable so onChange(of:) works
-extension AscentRateMonitor.AscentRateStatus: @retroactive Equatable {
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        switch (lhs, rhs) {
-        case (.safe, .safe): return true
-        case (.warning, .warning): return true
-        case (.critical, .critical): return true
-        default: return false
-        }
-    }
-}
+
 
 struct DiveView: View {
 
@@ -23,6 +13,7 @@ struct DiveView: View {
     @State private var safetyStopHapticFired = false
     @State private var depthWarningHapticTimer: Timer?
     @State private var lastDepthLimitStatus: DepthLimits.DepthLimitStatus = .safe
+    @State private var batteryLevel: Float = -1
 
     var body: some View {
         GeometryReader { geo in
@@ -78,6 +69,15 @@ struct DiveView: View {
                 WKInterfaceDevice.current().play(.failure)
             }
         }
+        .onAppear {
+            let device = WKInterfaceDevice.current()
+            device.isBatteryMonitoringEnabled = true
+            batteryLevel = device.batteryLevel
+        }
+        .onDisappear {
+            depthWarningHapticTimer?.invalidate()
+            depthWarningHapticTimer = nil
+        }
     }
 
     // MARK: - Top Row
@@ -88,6 +88,7 @@ struct DiveView: View {
             Text(formattedElapsedTime)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.8))
+                .accessibilityLabel("Elapsed time \(formattedElapsedTime)")
 
             Spacer()
 
@@ -108,14 +109,17 @@ struct DiveView: View {
             Text("DECO: \(String(format: "%.1f", viewModel.ceilingDepth))m")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.red)
+                .accessibilityLabel("Decompression required, ceiling \(String(format: "%.1f", viewModel.ceilingDepth)) meters")
         } else if viewModel.ndl <= 5 {
             Text("NDL: \(viewModel.ndl)")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.yellow)
+                .accessibilityLabel("No decompression limit \(viewModel.ndl) minutes")
         } else {
             Text("NDL: \(viewModel.ndl)")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.green)
+                .accessibilityLabel("No decompression limit \(viewModel.ndl) minutes")
         }
     }
 
@@ -133,6 +137,8 @@ struct DiveView: View {
                 .font(.system(size: 18, weight: .medium, design: .rounded))
                 .foregroundStyle(depthColor.opacity(0.7))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Current depth \(String(format: "%.1f", viewModel.currentDepth)) meters")
     }
 
     private var depthColor: Color {
@@ -153,6 +159,7 @@ struct DiveView: View {
             Text(String(format: "%.0f\u{00B0}C", viewModel.temperature))
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(.cyan)
+                .accessibilityLabel("Temperature \(String(format: "%.0f", viewModel.temperature)) degrees")
 
             Spacer()
 
@@ -166,18 +173,34 @@ struct DiveView: View {
                     .font(.system(size: 10))
             }
             .foregroundStyle(ascentRateColor)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Ascent rate \(String(format: "%.0f", viewModel.ascentRate)) meters per minute, \(viewModel.ascentRateStatus)")
 
             Spacer()
 
-            // Battery placeholder
+            // Battery
             HStack(spacing: 2) {
-                Image(systemName: "battery.75percent")
+                Image(systemName: batteryIconName)
                     .font(.system(size: 12))
-                Text("87%")
+                Text(batteryText)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
             }
             .foregroundStyle(.white.opacity(0.6))
         }
+    }
+
+    private var batteryText: String {
+        guard batteryLevel >= 0 else { return "--%" }
+        return "\(Int(batteryLevel * 100))%"
+    }
+
+    private var batteryIconName: String {
+        guard batteryLevel >= 0 else { return "battery.0percent" }
+        let pct = Int(batteryLevel * 100)
+        if pct >= 75 { return "battery.100percent" }
+        if pct >= 50 { return "battery.75percent" }
+        if pct >= 25 { return "battery.50percent" }
+        return "battery.25percent"
     }
 
     private var ascentRateColor: Color {

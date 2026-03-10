@@ -843,7 +843,9 @@ final class EN13319_StateMachineTests: XCTestCase {
         mgr.updateDepth(15.0)
         XCTAssertEqual(mgr.phase, .descending)
 
-        mgr.updateDepth(15.0) // same depth
+        // Hysteresis requires 2+ consecutive stable readings for atDepth
+        mgr.updateDepth(15.0) // first stable
+        mgr.updateDepth(15.0) // second stable — triggers atDepth
         XCTAssertEqual(mgr.phase, .atDepth,
                        "TC-S-003: Phase should be .atDepth when depth stabilizes")
     }
@@ -854,10 +856,13 @@ final class EN13319_StateMachineTests: XCTestCase {
         mgr.startDive()
 
         mgr.updateDepth(20.0)
-        mgr.updateDepth(20.0) // atDepth
+        mgr.updateDepth(20.0) // first stable
+        mgr.updateDepth(20.0) // second stable — triggers atDepth
         XCTAssertEqual(mgr.phase, .atDepth)
 
-        mgr.updateDepth(18.0) // ascending
+        // Hysteresis requires 2+ consecutive ascending readings
+        mgr.updateDepth(18.0) // first ascending
+        mgr.updateDepth(16.0) // second ascending — triggers ascending
         XCTAssertEqual(mgr.phase, .ascending,
                        "TC-S-004: Phase must transition to .ascending when depth decreases")
     }
@@ -944,8 +949,10 @@ final class EN13319_StateMachineTests: XCTestCase {
         mgr.startDive()
 
         mgr.updateDepth(10.0) // descending
-        mgr.updateDepth(10.0) // atDepth
-        mgr.updateDepth(5.0)  // ascending
+        mgr.updateDepth(10.0) // first stable
+        mgr.updateDepth(10.0) // second stable — triggers atDepth
+        mgr.updateDepth(5.0)  // first ascending
+        mgr.updateDepth(3.0)  // second ascending — triggers ascending
 
         let phaseEvents = mgr.healthLog.filter { $0.eventType == .phaseTransition }
         // Should have: surface→descending, descending→atDepth, atDepth→ascending
@@ -983,23 +990,28 @@ final class EN13319_StateMachineTests: XCTestCase {
         mgr.updateDepth(20.0)
         XCTAssertEqual(mgr.phase, .descending)
 
-        // Stay at 20m
+        // Stay at 20m (hysteresis: 2+ stable readings)
+        mgr.updateDepth(20.0)
         mgr.updateDepth(20.0)
         XCTAssertEqual(mgr.phase, .atDepth)
 
-        // Ascend to 12m
+        // Ascend to 12m (hysteresis: 2+ ascending readings)
         mgr.updateDepth(15.0)
+        mgr.updateDepth(12.0)
         XCTAssertEqual(mgr.phase, .ascending)
 
-        // Level 2: descend to 18m
+        // Level 2: descend to 18m (hysteresis: 2+ descending readings)
+        mgr.updateDepth(15.0)
         mgr.updateDepth(18.0)
         XCTAssertEqual(mgr.phase, .descending)
 
-        // Stay at 18m
+        // Stay at 18m (hysteresis: 2+ stable readings)
+        mgr.updateDepth(18.0)
         mgr.updateDepth(18.0)
         XCTAssertEqual(mgr.phase, .atDepth)
 
-        // Ascend
+        // Ascend (hysteresis: 2+ ascending readings)
+        mgr.updateDepth(14.0)
         mgr.updateDepth(10.0)
         XCTAssertEqual(mgr.phase, .ascending)
     }

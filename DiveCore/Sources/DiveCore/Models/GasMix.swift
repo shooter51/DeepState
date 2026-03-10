@@ -6,8 +6,11 @@ public struct GasMix: Codable, Sendable, Equatable {
     public let heFraction: Double
 
     public init(o2Fraction: Double, n2Fraction: Double, heFraction: Double) {
-        precondition(abs(o2Fraction + n2Fraction + heFraction - 1.0) < 0.01,
-                     "Gas fractions must sum to 1.0 (got \(o2Fraction + n2Fraction + heFraction))")
+        let sum = o2Fraction + n2Fraction + heFraction
+        if abs(sum - 1.0) >= 0.01 {
+            print("[DiveCore] Warning: Gas fractions should sum to 1.0 (got \(sum)). Proceeding with provided values.")
+            assert(false, "Gas fractions must sum to 1.0 (got \(sum))")
+        }
         self.o2Fraction = o2Fraction
         self.n2Fraction = n2Fraction
         self.heFraction = heFraction
@@ -28,8 +31,11 @@ public struct GasMix: Codable, Sendable, Equatable {
     // MARK: - Factory
 
     public static func nitrox(o2Percent: Int) -> GasMix {
-        precondition(o2Percent >= 21 && o2Percent <= 40, "O2 percent must be between 21 and 40")
-        let o2 = Double(o2Percent) / 100.0
+        let clamped = min(max(o2Percent, 21), 40)
+        if clamped != o2Percent {
+            print("[DiveCore] Warning: o2Percent \(o2Percent) clamped to \(clamped) (valid range: 21-40)")
+        }
+        let o2 = Double(clamped) / 100.0
         return GasMix(o2Fraction: o2, n2Fraction: 1.0 - o2, heFraction: 0.0)
     }
 }

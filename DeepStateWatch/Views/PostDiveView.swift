@@ -11,6 +11,7 @@ struct PostDiveView: View {
     @State private var surfaceInterval: TimeInterval = 0
     @State private var surfaceTimer: Timer?
     @State private var saved = false
+    @State private var saveError: String?
 
     var body: some View {
         ScrollView {
@@ -64,6 +65,23 @@ struct PostDiveView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(saved)
+
+                    if let saveError {
+                        Text(saveError)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+
+                        Button(action: saveDive) {
+                            Text("RETRY SAVE")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(.orange, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     Button(action: onNewDive) {
                         Text("NEW DIVE")
@@ -167,6 +185,7 @@ struct PostDiveView: View {
     // MARK: - Save
 
     private func saveDive() {
+        saveError = nil
         let session = DiveSession(
             startDate: viewModel.surfaceIntervalStart?.addingTimeInterval(-viewModel.elapsedTime) ?? Date(),
             endDate: viewModel.surfaceIntervalStart,
@@ -184,7 +203,12 @@ struct PostDiveView: View {
         session.tissueLoadingAtEnd = viewModel.tissueLoadingPercent
 
         modelContext.insert(session)
-        saved = true
+        do {
+            try modelContext.save()
+            saved = true
+        } catch {
+            saveError = "Save failed: \(error.localizedDescription)"
+        }
     }
 }
 

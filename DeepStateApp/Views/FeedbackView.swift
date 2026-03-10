@@ -128,6 +128,10 @@ struct FeedbackView: View {
 
     private var submitSection: some View {
         Section {
+            Text("Feedback submission is not yet connected. Your report will not be sent.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+
             Button {
                 // TODO: Wire to backend API endpoint
                 showingSubmitConfirmation = true

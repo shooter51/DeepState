@@ -22,6 +22,10 @@ final class DiveSensorBridge: DiveSensorDelegate {
         let mock = MockDiveSensor()
         self.sensor = mock
         #else
+        // Intentionally using MockDiveSensor in non-simulated builds as well.
+        // Real CMWaterSubmersionManager integration is blocked until Apple grants the
+        // com.apple.developer.coremotion.water-submersion entitlement.
+        // See CLAUDE.md "Known Gaps" item 8.
         let mock = MockDiveSensor()
         self.sensor = mock
         #endif
