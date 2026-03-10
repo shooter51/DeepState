@@ -169,7 +169,9 @@ extension DiveProfileRecorder {
             let p1 = waypoints[i]
             let p2 = waypoints[i + 1]
             if time >= p1.time && time <= p2.time {
-                let fraction = (time - p1.time) / (p2.time - p1.time)
+                let dt = p2.time - p1.time
+                guard dt > 0 else { return p1.depth }
+                let fraction = (time - p1.time) / dt
                 return p1.depth + (p2.depth - p1.depth) * fraction
             }
         }

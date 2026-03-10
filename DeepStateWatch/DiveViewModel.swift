@@ -120,6 +120,13 @@ final class DiveViewModel {
         syncState()
     }
 
+    // MARK: - Crash Recovery
+
+    func resumeFromPersistedState(_ state: TissueStatePersistence.PersistedDiveState) {
+        self.manager = TissueStatePersistence.restore(from: state)
+        syncState()
+    }
+
     // MARK: - Passthrough for save
 
     var gasMix: GasMix { manager.gasMix }

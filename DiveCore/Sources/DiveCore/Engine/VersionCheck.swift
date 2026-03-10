@@ -20,8 +20,11 @@ public struct VersionManifest: Codable, Sendable {
 public enum VersionComparator {
 
     public static func isVersion(_ current: String, olderThan minimum: String) -> Bool {
-        let currentParts = current.split(separator: ".").compactMap { Int($0) }
-        let minimumParts = minimum.split(separator: ".").compactMap { Int($0) }
+        // Strip pre-release suffixes (anything after "-") before parsing
+        let currentBase = current.split(separator: "-").first.map(String.init) ?? current
+        let minimumBase = minimum.split(separator: "-").first.map(String.init) ?? minimum
+        let currentParts = currentBase.split(separator: ".").compactMap { Int($0) }
+        let minimumParts = minimumBase.split(separator: ".").compactMap { Int($0) }
 
         let count = max(currentParts.count, minimumParts.count)
         for i in 0..<count {
@@ -54,7 +57,11 @@ public actor VersionCheckService {
     public init(endpoint: URL = defaultEndpoint, currentVersion: String = "1.0.0") {
         self.endpoint = endpoint
         self.currentVersion = currentVersion
-        self.dataFetcher = { url in try await URLSession.shared.data(from: url) }
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
+        let session = URLSession(configuration: config)
+        self.dataFetcher = { url in try await session.data(from: url) }
     }
 
     /// Test-only initializer allowing injection of a custom data fetcher

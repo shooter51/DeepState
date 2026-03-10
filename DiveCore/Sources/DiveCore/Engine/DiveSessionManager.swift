@@ -80,6 +80,13 @@ public class DiveSessionManager {
     var lastDepth: Double = 0
     private var depthSamples: [(depth: Double, time: TimeInterval)] = []
     private let depthThreshold: Double = 0.5
+    private var consecutiveDirectionCount: Int = 0
+    private var pendingDirection: PhaseDirection = .stable
+    private static let hysteresisThreshold: Int = 2
+
+    private enum PhaseDirection {
+        case descending, ascending, stable
+    }
 
     // MARK: - Init
 
@@ -220,8 +227,11 @@ public class DiveSessionManager {
         // Periodic persistence
         samplesSincePersist += 1
         if samplesSincePersist >= 5 {
-            TissueStatePersistence.persist(manager: self)
             samplesSincePersist = 0
+            let activePhases: Set<DivePhase> = [.descending, .atDepth, .ascending, .safetyStop]
+            if activePhases.contains(phase) {
+                TissueStatePersistence.persist(manager: self)
+            }
         }
     }
 
@@ -234,7 +244,13 @@ public class DiveSessionManager {
 
     // MARK: - Stale Sensor Detection
 
-    /// Call periodically (e.g., every 1 second) to track sensor data freshness
+    /// Check whether the depth sensor has provided a reading recently.
+    ///
+    /// This method **must be called exactly once per second** by the host app's
+    /// timer (e.g., `WKExtendedRuntimeSession` tick). Each call increments the
+    /// internal `sensorDataAge` counter by 1 second. If the age exceeds
+    /// `maxSensorDataAge` (10 s), NDL is blanked and `isSensorDataStale` is set.
+    /// The counter resets whenever `updateDepth(_:)` is called with a fresh reading.
     public func checkSensorStaleness() {
         sensorDataAge += 1.0
         if sensorDataAge > DiveSessionManager.maxSensorDataAge {
@@ -335,18 +351,43 @@ public class DiveSessionManager {
             return
         }
 
-        if depth > lastDepth + 0.1 {
-            phase = .descending
-        } else if depth < lastDepth - 0.1 {
-            if safetyStopManager.isAtSafetyStop {
-                phase = .safetyStop
-            } else {
-                phase = .ascending
+        // Safety stop detection is immediate (no hysteresis delay for safety-critical transitions)
+        if safetyStopManager.isAtSafetyStop {
+            consecutiveDirectionCount = 0
+            pendingDirection = .stable
+            phase = .safetyStop
+            if phase != previousPhase {
+                logEvent(.phaseTransition, detail: "\(previousPhase.rawValue) -> \(phase.rawValue)")
             }
+            return
+        }
+
+        // Determine current reading direction
+        let currentDirection: PhaseDirection
+        if depth > lastDepth + 0.1 {
+            currentDirection = .descending
+        } else if depth < lastDepth - 0.1 {
+            currentDirection = .ascending
         } else {
-            if safetyStopManager.isAtSafetyStop {
-                phase = .safetyStop
-            } else {
+            currentDirection = .stable
+        }
+
+        // Update consecutive reading counter for hysteresis
+        if currentDirection == pendingDirection {
+            consecutiveDirectionCount += 1
+        } else {
+            pendingDirection = currentDirection
+            consecutiveDirectionCount = 1
+        }
+
+        // Only change phase after 2+ consecutive readings in the same direction
+        if consecutiveDirectionCount >= DiveSessionManager.hysteresisThreshold {
+            switch pendingDirection {
+            case .descending:
+                phase = .descending
+            case .ascending:
+                phase = .ascending
+            case .stable:
                 phase = .atDepth
             }
         }

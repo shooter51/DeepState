@@ -1,7 +1,12 @@
 import SwiftUI
+import SwiftData
 import DiveCore
 
 struct DivePlannerView: View {
+    // MARK: - Settings
+
+    @Query private var settings: [DiveSettings]
+
     // MARK: - Input State
 
     @State private var targetDepth: Int = 18
@@ -9,6 +14,8 @@ struct DivePlannerView: View {
     @State private var customO2: Int = 32
     @State private var gfLow: Double = 0.40
     @State private var gfHigh: Double = 0.85
+    @State private var ppO2Max: Double = 1.4
+    @State private var hasLoadedSettings = false
 
     enum GasSelection: String, CaseIterable, Identifiable {
         case air = "Air"
@@ -49,8 +56,7 @@ struct DivePlannerView: View {
     }
 
     private var mod: Double {
-        // MOD = (ppO2Max / fO2 - 1) * 10
-        (1.4 / gasMix.o2Fraction - 1.0) * 10.0
+        GasCalculator.mod(gasMix: gasMix, ppO2Max: ppO2Max)
     }
 
     private var ead: Double? {
@@ -60,7 +66,9 @@ struct DivePlannerView: View {
     }
 
     private var ndl: Int {
-        let engine = BuhlmannEngine(gfLow: gfLow, gfHigh: gfHigh)
+        let effectiveGfLow = settings.first?.gfLow ?? gfLow
+        let effectiveGfHigh = settings.first?.gfHigh ?? gfHigh
+        let engine = BuhlmannEngine(gfLow: effectiveGfLow, gfHigh: effectiveGfHigh)
         return engine.ndl(depth: depth, gasMix: gasMix)
     }
 
@@ -69,33 +77,24 @@ struct DivePlannerView: View {
     }
 
     // Simulated profile calculations
-    private var descentRate: Double { 18.0 } // m/min
-    private var ascentRate: Double { 9.0 }   // m/min
+    private var simulatedProfile: (descent: Double, bottom: Double, ascent: Double, safetyStop: Double, finalAscent: Double, total: Double) {
+        // TODO: These rates should come from DiveSettings
+        let descentRateMPerMin = 18.0 // m/min
+        let ascentRateMPerMin = 9.0   // m/min
 
-    private var descentTime: Double {
-        depth / descentRate
-    }
-
-    private var bottomTime: Double {
-        Double(ndl)
-    }
-
-    private var ascentTime: Double {
+        let descentTime = depth / descentRateMPerMin
+        let bottomTime = min(Double(ndl), 120)
         let ascentDepth = depth > 10 ? depth - 5.0 : depth
-        return ascentDepth / ascentRate
+        let ascentTime = ascentDepth / ascentRateMPerMin
+        let safetyStopTime = depth > 10 ? 3.0 : 0.0
+        let finalAscentTime = depth > 10 ? 5.0 / ascentRateMPerMin : 0.0
+        let totalDiveTime = descentTime + bottomTime + ascentTime + safetyStopTime + finalAscentTime
+
+        return (descentTime, bottomTime, ascentTime, safetyStopTime, finalAscentTime, totalDiveTime)
     }
 
-    private var safetyStopTime: Double {
-        depth > 10 ? 3.0 : 0.0
-    }
-
-    private var finalAscentTime: Double {
-        depth > 10 ? 5.0 / ascentRate : 0.0
-    }
-
-    private var totalDiveTime: Double {
-        descentTime + bottomTime + ascentTime + safetyStopTime + finalAscentTime
-    }
+    private var descentRate: Double { 18.0 }
+    private var ascentRate: Double { 9.0 }
 
     // MARK: - Body
 
@@ -110,6 +109,15 @@ struct DivePlannerView: View {
                 simulatedProfileSection
             }
             .navigationTitle("Planner")
+            .onAppear {
+                guard !hasLoadedSettings else { return }
+                hasLoadedSettings = true
+                if let s = settings.first {
+                    gfLow = s.gfLow
+                    gfHigh = s.gfHigh
+                    ppO2Max = s.ppO2Max
+                }
+            }
         }
     }
 
@@ -117,7 +125,7 @@ struct DivePlannerView: View {
 
     private var inputSection: some View {
         Section("Dive Parameters") {
-            Stepper("Target Depth: \(targetDepth)m", value: $targetDepth, in: 5...60, step: 1)
+            Stepper("Target Depth: \(targetDepth)m", value: $targetDepth, in: 5...40, step: 1)
 
             Picker("Gas Mix", selection: $gasSelection) {
                 ForEach(GasSelection.allCases) { gas in
@@ -132,6 +140,16 @@ struct DivePlannerView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Stepper("GF Low: \(Int(gfLow * 100))%", value: $gfLow, in: 0.10...0.95, step: 0.05)
                 Stepper("GF High: \(Int(gfHigh * 100))%", value: $gfHigh, in: 0.10...0.95, step: 0.05)
+            }
+        }
+        .onChange(of: gfLow) { _, newLow in
+            if gfHigh < newLow + 0.10 {
+                gfHigh = min(newLow + 0.10, 0.95)
+            }
+        }
+        .onChange(of: gfHigh) { _, newHigh in
+            if gfLow > newHigh - 0.10 {
+                gfLow = max(newHigh - 0.10, 0.10)
             }
         }
     }
@@ -181,7 +199,7 @@ struct DivePlannerView: View {
     private var ppO2Color: Color {
         if ppO2AtDepth > 1.6 {
             return .red
-        } else if ppO2AtDepth > 1.4 {
+        } else if ppO2AtDepth > ppO2Max {
             return .orange
         } else {
             return .green
@@ -201,14 +219,15 @@ struct DivePlannerView: View {
     // MARK: - Simulated Profile Section
 
     private var simulatedProfileSection: some View {
-        Section("Simulated Square Profile") {
-            profileRow(label: "Descent", value: String(format: "%.1f min", descentTime), detail: "at \(Int(descentRate))m/min")
-            profileRow(label: "Bottom Time", value: "\(Int(bottomTime)) min", detail: "at \(targetDepth)m")
-            profileRow(label: "Ascent", value: String(format: "%.1f min", ascentTime), detail: "at \(Int(ascentRate))m/min")
+        let profile = simulatedProfile
+        return Section("Simulated Square Profile") {
+            profileRow(label: "Descent", value: String(format: "%.1f min", profile.descent), detail: "at \(Int(descentRate))m/min")
+            profileRow(label: "Bottom Time", value: ndl >= 999 ? "120 min (NDL unrestricted)" : "\(Int(profile.bottom)) min", detail: "at \(targetDepth)m")
+            profileRow(label: "Ascent", value: String(format: "%.1f min", profile.ascent), detail: "at \(Int(ascentRate))m/min")
 
-            if safetyStopTime > 0 {
+            if profile.safetyStop > 0 {
                 profileRow(label: "Safety Stop", value: "3 min", detail: "at 5m")
-                profileRow(label: "Final Ascent", value: String(format: "%.1f min", finalAscentTime), detail: "5m to surface")
+                profileRow(label: "Final Ascent", value: String(format: "%.1f min", profile.finalAscent), detail: "5m to surface")
             }
 
             Divider()
@@ -217,7 +236,7 @@ struct DivePlannerView: View {
                 Text("Total Dive Time")
                     .fontWeight(.semibold)
                 Spacer()
-                Text(String(format: "%.0f min", totalDiveTime))
+                Text(String(format: "%.0f min", profile.total))
                     .fontWeight(.bold)
                     .foregroundStyle(.blue)
             }

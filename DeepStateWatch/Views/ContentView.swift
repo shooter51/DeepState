@@ -21,12 +21,16 @@ struct ContentView: View {
             } else if showRecovery {
                 SessionRecoveryView(
                     onResume: {
-                        if let state = TissueStatePersistence.loadPersistedState() {
-                            diveViewModel.startDive()
-                            sensorBridge.startMonitoring()
-                            runtimeManager.startSession()
-                            startUpdateLoop()
+                        guard let state = TissueStatePersistence.loadPersistedState() else {
+                            TissueStatePersistence.clearPersistedState()
+                            showRecovery = false
+                            return
                         }
+                        diveViewModel.resumeFromPersistedState(state)
+                        sensorBridge.startMonitoring()
+                        runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
+                        runtimeManager.startSession()
+                        startUpdateLoop()
                         showRecovery = false
                     },
                     onEnd: {
@@ -49,6 +53,7 @@ struct ContentView: View {
                     diveViewModel.reconfigure(gasMix: gasMix, gfLow: gfLow, gfHigh: gfHigh)
                     diveViewModel.startDive()
                     sensorBridge.startMonitoring()
+                    runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
                     runtimeManager.startSession()
                     startUpdateLoop()
                 }
@@ -63,11 +68,11 @@ struct ContentView: View {
 
             case .surfaceInterval:
                 PostDiveView(viewModel: diveViewModel) {
+                    sensorBridge.stopMonitoring()
                     stopUpdateLoop()
                     runtimeManager.endSession()
                     TissueStatePersistence.clearPersistedState()
                     diveViewModel.resetForNewDive()
-                    sensorBridge.stopMonitoring()
                 }
             }
         }
@@ -81,14 +86,19 @@ struct ContentView: View {
             diveViewModel.updateTemperature(sensorBridge.temperature)
             diveViewModel.checkSensorStaleness()
 
+            // Auto-stop when dive ends (e.g. surfacing for 5+ seconds)
+            if diveViewModel.phase == .surfaceInterval {
+                sensorBridge.stopMonitoring()
+                stopUpdateLoop()
+                runtimeManager.endSession()
+                return
+            }
+
             // Auto-persist tissue state every 5 seconds during active dive
             persistCounter += 1
             if persistCounter >= 5 {
                 persistCounter = 0
-                let phase = diveViewModel.phase
-                if phase == .descending || phase == .atDepth || phase == .ascending || phase == .safetyStop {
-                    TissueStatePersistence.persist(manager: diveViewModel.manager)
-                }
+                TissueStatePersistence.persist(manager: diveViewModel.manager)
             }
         }
     }

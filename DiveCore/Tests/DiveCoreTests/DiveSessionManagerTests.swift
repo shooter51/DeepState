@@ -257,6 +257,7 @@ final class DiveSessionManagerTests: XCTestCase {
 
         mgr.updateDepth(20.0)
         mgr.updateDepth(15.0)
+        mgr.updateDepth(10.0) // second consecutive ascending — triggers phase change
 
         XCTAssertEqual(mgr.phase, .ascending)
     }
@@ -266,7 +267,8 @@ final class DiveSessionManagerTests: XCTestCase {
         mgr.startDive()
 
         mgr.updateDepth(20.0)
-        // Same depth within 0.1m tolerance = atDepth
+        // Hysteresis requires 2+ consecutive stable readings for atDepth
+        mgr.updateDepth(20.0)
         mgr.updateDepth(20.0)
 
         XCTAssertEqual(mgr.phase, .atDepth)
@@ -870,7 +872,8 @@ final class DiveSessionManagerTests: XCTestCase {
         mgr.startDive()
 
         mgr.updateDepth(15.0)
-        // Same depth (within 0.1m tolerance)
+        // Hysteresis requires 2+ consecutive stable readings for atDepth
+        mgr.updateDepth(15.0)
         mgr.updateDepth(15.0)
 
         XCTAssertEqual(mgr.phase, .atDepth)
@@ -914,7 +917,8 @@ final class DiveSessionManagerTests: XCTestCase {
         XCTAssertEqual(mgr.phase, .descending)
         XCTAssertEqual(mgr.maxDepth, 15.0)
 
-        // 4. At depth
+        // 4. At depth (hysteresis requires 2+ consecutive stable readings)
+        mgr.updateDepth(15.0)
         mgr.updateDepth(15.0)
         XCTAssertEqual(mgr.phase, .atDepth)
 
@@ -1085,7 +1089,9 @@ final class DiveSessionManagerTests: XCTestCase {
         mgr.updateDepth(10.0)
         XCTAssertEqual(mgr.phase, .descending)
 
-        mgr.updateDepth(10.05) // within 0.1m, so atDepth
+        // Hysteresis requires 2+ consecutive stable readings to transition to atDepth
+        mgr.updateDepth(10.05) // within 0.1m, first stable reading
+        mgr.updateDepth(10.05) // second stable reading — triggers atDepth
         XCTAssertEqual(mgr.phase, .atDepth)
     }
 
@@ -1094,10 +1100,13 @@ final class DiveSessionManagerTests: XCTestCase {
         mgr.startDive()
 
         mgr.updateDepth(20.0)
-        mgr.updateDepth(20.0) // atDepth
+        mgr.updateDepth(20.0) // first stable
+        mgr.updateDepth(20.0) // second stable — triggers atDepth
         XCTAssertEqual(mgr.phase, .atDepth)
 
-        mgr.updateDepth(19.0) // ascending
+        // Hysteresis requires 2+ consecutive ascending readings
+        mgr.updateDepth(19.0) // first ascending
+        mgr.updateDepth(18.0) // second ascending — triggers ascending
         XCTAssertEqual(mgr.phase, .ascending)
     }
 

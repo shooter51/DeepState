@@ -105,8 +105,50 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    private func validateDiveData(_ message: [String: Any]) -> Bool {
+        let maxDepth = message["maxDepth"] as? Double ?? 0
+        let avgDepth = message["avgDepth"] as? Double ?? 0
+        let duration = message["duration"] as? TimeInterval ?? 0
+        let o2Percent = message["o2Percent"] as? Int ?? 21
+        let gfLow = message["gfLow"] as? Double ?? 0.40
+        let gfHigh = message["gfHigh"] as? Double ?? 0.85
+
+        guard (0...200).contains(maxDepth) else {
+            print("[WatchSync] Invalid maxDepth: \(maxDepth). Must be 0...200.")
+            return false
+        }
+        guard (0...maxDepth).contains(avgDepth) else {
+            print("[WatchSync] Invalid avgDepth: \(avgDepth). Must be 0...\(maxDepth).")
+            return false
+        }
+        guard (0...86400).contains(duration) else {
+            print("[WatchSync] Invalid duration: \(duration). Must be 0...86400.")
+            return false
+        }
+        guard (21...100).contains(o2Percent) else {
+            print("[WatchSync] Invalid o2Percent: \(o2Percent). Must be 21...100.")
+            return false
+        }
+        guard (0.1...1.0).contains(gfLow) else {
+            print("[WatchSync] Invalid gfLow: \(gfLow). Must be 0.1...1.0.")
+            return false
+        }
+        guard (0.1...1.0).contains(gfHigh) else {
+            print("[WatchSync] Invalid gfHigh: \(gfHigh). Must be 0.1...1.0.")
+            return false
+        }
+        guard gfLow <= gfHigh else {
+            print("[WatchSync] Invalid gradient factors: gfLow (\(gfLow)) must be <= gfHigh (\(gfHigh)).")
+            return false
+        }
+
+        return true
+    }
+
     private func persistDiveSession(from message: [String: Any], context: ModelContext) {
         guard let startDateInterval = message["startDate"] as? TimeInterval else { return }
+
+        guard validateDiveData(message) else { return }
 
         let session = DiveSession(startDate: Date(timeIntervalSince1970: startDateInterval))
 

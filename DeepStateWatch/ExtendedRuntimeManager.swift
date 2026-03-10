@@ -2,6 +2,8 @@ import WatchKit
 
 class ExtendedRuntimeManager: NSObject, WKExtendedRuntimeSessionDelegate {
     var session: WKExtendedRuntimeSession?
+    var onSessionExpiring: (() -> Void)?
+    var onSessionError: ((WKExtendedRuntimeSessionInvalidationReason, Error?) -> Void)?
 
     func startSession() {
         let session = WKExtendedRuntimeSession()
@@ -18,8 +20,13 @@ class ExtendedRuntimeManager: NSObject, WKExtendedRuntimeSessionDelegate {
     func extendedRuntimeSessionDidStart(_ session: WKExtendedRuntimeSession) {}
 
     func extendedRuntimeSessionWillExpire(_ session: WKExtendedRuntimeSession) {
-        // Session about to expire — persist state
+        onSessionExpiring?()
     }
 
-    func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: (any Error)?) {}
+    func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: (any Error)?) {
+        if let error {
+            print("[DeepState] Extended runtime session invalidated: \(reason.rawValue), error: \(error)")
+        }
+        onSessionError?(reason, error)
+    }
 }

@@ -75,9 +75,10 @@ struct SessionRecoveryView: View {
 
     private func loadPersistedState() {
         if let state = TissueStatePersistence.loadPersistedState() {
-            lastDepth = state.lastDepth
+            lastDepth = state.currentDepth
             elapsedTime = state.elapsedTime
-            let maxLoading = state.tissueLoadings.max() ?? 0
+            let restoredManager = TissueStatePersistence.restore(from: state)
+            let maxLoading = restoredManager.tissueLoadingPercent.max() ?? 0
             tissueLoadingSummary = String(format: "Peak: %.0f%%", maxLoading)
         }
     }

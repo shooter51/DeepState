@@ -30,21 +30,21 @@ public struct GasCalculator {
         switch ppO2 {
         case ...0.60:
             return 0.0
-        case 0.60...0.70:
+        case 0.60..<0.70:
             return 1.0 / 150.0
-        case 0.70...0.80:
+        case 0.70..<0.80:
             return 1.0 / 120.0
-        case 0.80...0.90:
+        case 0.80..<0.90:
             return 1.0 / 90.0
-        case 0.90...1.10:
+        case 0.90..<1.10:
             return 1.0 / 75.0
-        case 1.10...1.35:
+        case 1.10..<1.35:
             return 1.0 / 51.0
-        case 1.35...1.40:
+        case 1.35..<1.40:
             return 1.0 / 45.0
-        case 1.40...1.50:
+        case 1.40..<1.50:
             return 1.0 / 25.0
-        case 1.50...1.60:
+        case 1.50..<1.60:
             return 1.0 / 12.0
         default:
             return 1.0 / 5.0
@@ -59,13 +59,13 @@ public struct GasCalculator {
 
     public static func updateOTU(currentOTU: Double, ppO2: Double, timeInterval: TimeInterval) -> Double {
         guard ppO2 > 0.5 else { return currentOTU }
-        let otuPerMin = pow((ppO2 - 0.5) / 0.5, 0.8333)
+        let otuPerMin = pow((ppO2 - 0.5) / 0.5, 5.0 / 6.0)
         return currentOTU + otuPerMin * (timeInterval / 60.0)
     }
 
     // MARK: - Equivalent Air Depth
 
     public static func ead(depth: Double, gasMix: GasMix) -> Double {
-        (depth + 10.0) * gasMix.n2Fraction / 0.79 - 10.0
+        (depth + 10.0) * gasMix.n2Fraction / GasMix.air.n2Fraction - 10.0
     }
 }
