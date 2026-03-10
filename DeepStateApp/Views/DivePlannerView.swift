@@ -199,7 +199,7 @@ struct DivePlannerView: View {
     private var ppO2Color: Color {
         if ppO2AtDepth > 1.6 {
             return .red
-        } else if ppO2AtDepth > 1.4 {
+        } else if ppO2AtDepth > ppO2Max {
             return .orange
         } else {
             return .green

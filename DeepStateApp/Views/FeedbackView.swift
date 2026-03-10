@@ -63,7 +63,7 @@ struct FeedbackView: View {
             .pickerStyle(.segmented)
 
             if selectedCategory == .safetyIncident {
-                Text("Safety incidents are treated as highest priority (P0). If you experienced incorrect depth, NDL, or decompression information during a dive, report it here. You will receive a response within 24 hours.")
+                Text("Safety incidents are treated as highest priority (P0). If you experienced incorrect depth, NDL, or decompression information during a dive, report it here. Online submission is not yet available — please email safety@divestreams.com directly for urgent concerns.")
                     .font(.callout)
                     .foregroundStyle(.white)
                     .padding()
@@ -113,7 +113,7 @@ struct FeedbackView: View {
                 .textInputAutocapitalization(.never)
 
             if selectedCategory == .safetyIncident {
-                Text("Required for Safety Incidents — we will respond within 24 hours")
+                Text("Required for Safety Incidents")
                     .font(.caption)
                     .foregroundStyle(.red)
             }
@@ -141,8 +141,14 @@ struct FeedbackView: View {
             }
             .foregroundStyle(.white)
             .listRowBackground(selectedCategory == .safetyIncident ? Color.red : Color.blue)
-            .disabled(description.isEmpty || (selectedCategory == .safetyIncident && contactEmail.isEmpty))
+            .disabled(description.isEmpty || (selectedCategory == .safetyIncident && !isValidEmail(contactEmail)))
         }
+    }
+
+    private func isValidEmail(_ email: String) -> Bool {
+        guard !email.isEmpty else { return false }
+        let pattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        return email.range(of: pattern, options: .regularExpression) != nil
     }
 }
 
