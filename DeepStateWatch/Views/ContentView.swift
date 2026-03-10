@@ -21,13 +21,16 @@ struct ContentView: View {
             } else if showRecovery {
                 SessionRecoveryView(
                     onResume: {
-                        if let state = TissueStatePersistence.loadPersistedState() {
-                            diveViewModel.resumeFromPersistedState(state)
-                            sensorBridge.startMonitoring()
-                            runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
-                            runtimeManager.startSession()
-                            startUpdateLoop()
+                        guard let state = TissueStatePersistence.loadPersistedState() else {
+                            TissueStatePersistence.clearPersistedState()
+                            showRecovery = false
+                            return
                         }
+                        diveViewModel.resumeFromPersistedState(state)
+                        sensorBridge.startMonitoring()
+                        runtimeManager.onSessionExpiring = { TissueStatePersistence.persist(manager: diveViewModel.manager) }
+                        runtimeManager.startSession()
+                        startUpdateLoop()
                         showRecovery = false
                     },
                     onEnd: {

@@ -59,7 +59,7 @@ public struct GasCalculator {
 
     public static func updateOTU(currentOTU: Double, ppO2: Double, timeInterval: TimeInterval) -> Double {
         guard ppO2 > 0.5 else { return currentOTU }
-        let otuPerMin = pow((ppO2 - 0.5) / 0.5, 0.8333)
+        let otuPerMin = pow((ppO2 - 0.5) / 0.5, 5.0 / 6.0)
         return currentOTU + otuPerMin * (timeInterval / 60.0)
     }
 

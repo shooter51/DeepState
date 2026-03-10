@@ -59,6 +59,8 @@ struct DiveView: View {
             if isStop && !safetyStopHapticFired {
                 WKInterfaceDevice.current().play(.click)
                 safetyStopHapticFired = true
+            } else if !isStop {
+                safetyStopHapticFired = false
             }
         }
         .onChange(of: viewModel.depthLimitStatus) { _, newStatus in

@@ -83,7 +83,7 @@ struct DivePlannerView: View {
         let ascentRateMPerMin = 9.0   // m/min
 
         let descentTime = depth / descentRateMPerMin
-        let bottomTime = Double(ndl)
+        let bottomTime = min(Double(ndl), 120)
         let ascentDepth = depth > 10 ? depth - 5.0 : depth
         let ascentTime = ascentDepth / ascentRateMPerMin
         let safetyStopTime = depth > 10 ? 3.0 : 0.0
@@ -222,7 +222,7 @@ struct DivePlannerView: View {
         let profile = simulatedProfile
         return Section("Simulated Square Profile") {
             profileRow(label: "Descent", value: String(format: "%.1f min", profile.descent), detail: "at \(Int(descentRate))m/min")
-            profileRow(label: "Bottom Time", value: "\(Int(profile.bottom)) min", detail: "at \(targetDepth)m")
+            profileRow(label: "Bottom Time", value: ndl >= 999 ? "120 min (NDL unrestricted)" : "\(Int(profile.bottom)) min", detail: "at \(targetDepth)m")
             profileRow(label: "Ascent", value: String(format: "%.1f min", profile.ascent), detail: "at \(Int(ascentRate))m/min")
 
             if profile.safetyStop > 0 {
